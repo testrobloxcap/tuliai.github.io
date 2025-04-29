@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tuli AI - Your Intelligent Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css">
+    <style>
+        .chat-container {
+            height: calc(100vh - 180px);
+        }
+        .message {
+            max-width: 85%;
+            margin: 10px;
+            padding: 15px;
+            border-radius: 10px;
+            position: relative;
+        }
+        .user-message {
+            background-color: #2b2b2b;
+            margin-left: auto;
+        }
+        .ai-message {
+            background-color: #1a1a1a;
+            margin-right: auto;
+        }
+        .typing-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        .code-block {
+            background-color: #1e1e1e;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            position: relative;
+        }
+        .copy-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            background-color: #2d2d2d;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .code-block:hover .copy-button {
+            opacity: 1;
+        }
+        .markdown-content {
+            line-height: 1.6;
+        }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        .markdown-content p {
+            margin-bottom: 1rem;
+        }
+        .markdown-content ul, .markdown-content ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .markdown-content code {
+            background-color: #2d2d2d;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+        }
+        .markdown-content pre {
+            margin: 1rem 0;
+        }
+        .markdown-content blockquote {
+            border-left: 4px solid #4a4a4a;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: #a0a0a0;
+        }
+        .markdown-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+        }
+        .markdown-content th, .markdown-content td {
+            border: 1px solid #4a4a4a;
+            padding: 0.5rem;
+        }
+        .markdown-content th {
+            background-color: #2d2d2d;
+        }
+        .message-actions {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .message:hover .message-actions {
+            opacity: 1;
+        }
+        .action-button {
+            padding: 0.25rem;
+            background-color: #2d2d2d;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .action-button:hover {
+            background-color: #3d3d3d;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .sidebar {
+            width: 260px;
+            background-color: #1a1a1a;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            padding: 1rem;
+            transition: transform 0.3s;
+        }
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+        .main-content {
+            margin-left: 260px;
+            transition: margin-left 0.3s;
+        }
+        .main-content.full-width {
+            margin-left: 0;
+        }
+        .new-chat-button {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: #2d2d2d;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .chat-history {
+            margin-top: 1rem;
+        }
+        .history-item {
+            padding: 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 0.5rem;
+        }
+        .history-item:hover {
+            background-color: #2d2d2d;
+        }
+        .toggle-sidebar {
+            position: fixed;
+            left: 1rem;
+            top: 1rem;
+            z-index: 50;
+            padding: 0.5rem;
+            background-color: #2d2d2d;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="sidebar" id="sidebar">
+        <button class="new-chat-button" onclick="startNewChat()">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            New Chat
+        </button>
+        <div class="chat-history" id="chat-history">
+            <!-- Chat history will be added here -->
+        </div>
+    </div>
+
+    <button class="toggle-sidebar" onclick="toggleSidebar()">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+    </button>
+
+    <div class="main-content" id="main-content">
+        <div class="container mx-auto px-4 py-8">
+            <header class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-green-500">Tuli AI</h1>
+                <p class="text-gray-400">Your Intelligent Assistant</p>
+            </header>
+
+            <div class="chat-container overflow-y-auto bg-gray-800 rounded-lg p-4 mb-4">
+                <div id="chat-messages" class="space-y-4">
+                    <!-- Messages will be added here -->
+                </div>
+            </div>
+
+            <div class="input-container">
+                <form id="chat-form" class="flex gap-2">
+                    <textarea id="user-input" 
+                            class="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                            placeholder="Type your message here..."
+                            rows="1"
+                            autocomplete="off"></textarea>
+                    <button type="submit" 
+                            class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors">
+                        Send
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/contrib/auto-render.min.js"></script>
+    <script>
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const chatMessages = document.getElementById('chat-messages');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+        let isProcessing = false;
+        let currentChatId = Date.now().toString();
+
+        // Configure marked for security
+        marked.setOptions({
+            highlight: function(code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    return hljs.highlight(code, { language: lang }).value;
+                }
+                return hljs.highlightAuto(code).value;
+            },
+            breaks: true,
+            gfm: true
+        });
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('hidden');
+            mainContent.classList.toggle('full-width');
+        }
+
+        function startNewChat() {
+            currentChatId = Date.now().toString();
+            chatMessages.innerHTML = '';
+            addMessage('Hello! I\'m Tuli AI. How can I help you today?');
+            saveChatToHistory('New Chat');
+        }
+
+        function saveChatToHistory(title) {
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            historyItem.textContent = title;
+            historyItem.onclick = () => loadChat(currentChatId);
+            document.getElementById('chat-history').prepend(historyItem);
+        }
+
+        function loadChat(chatId) {
+            // Implement chat loading logic
+            currentChatId = chatId;
+        }
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+            
+            // Add message actions
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'message-actions';
+            actionsDiv.innerHTML = `
+                <button class="action-button" onclick="copyMessage(this)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                    </svg>
+                </button>
+            `;
+            messageDiv.appendChild(actionsDiv);
+
+            // Process content with markdown and code highlighting
+            if (!isUser) {
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'markdown-content';
+                contentDiv.innerHTML = marked.parse(content);
+                messageDiv.appendChild(contentDiv);
+
+                // Initialize code highlighting
+                messageDiv.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                    
+                    // Add copy button to code blocks
+                    const copyButton = document.createElement('button');
+                    copyButton.className = 'copy-button';
+                    copyButton.innerHTML = 'Copy';
+                    copyButton.onclick = () => copyCode(block);
+                    block.parentNode.style.position = 'relative';
+                    block.parentNode.appendChild(copyButton);
+                });
+
+                // Render math expressions
+                renderMathInElement(contentDiv, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ]
+                });
+            } else {
+                messageDiv.textContent = content;
+            }
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function copyMessage(button) {
+            const message = button.closest('.message');
+            const content = message.querySelector('.markdown-content')?.innerText || message.innerText;
+            navigator.clipboard.writeText(content);
+            
+            // Show copied feedback
+            button.innerHTML = `
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            `;
+            setTimeout(() => {
+                button.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                    </svg>
+                `;
+            }, 2000);
+        }
+
+        function copyCode(block) {
+            navigator.clipboard.writeText(block.textContent);
+            const button = block.parentNode.querySelector('.copy-button');
+            button.textContent = 'Copied!';
+            setTimeout(() => {
+                button.textContent = 'Copy';
+            }, 2000);
+        }
+
+        function addTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'message ai-message';
+            indicator.innerHTML = '<div class="typing-indicator"></div>';
+            indicator.id = 'typing-indicator';
+            chatMessages.appendChild(indicator);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        // Auto-resize textarea
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+            if (isProcessing) return;
+
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // Add user message
+            addMessage(message, true);
+            userInput.value = '';
+            userInput.style.height = 'auto';
+
+            // Show typing indicator
+            addTypingIndicator();
+            isProcessing = true;
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message }),
+                });
+
+                const data = await response.json();
+                removeTypingIndicator();
+
+                if (data.status === 'success') {
+                    addMessage(data.response);
+                } else {
+                    addMessage('Sorry, I encountered an error. Please try again.');
+                }
+            } catch (error) {
+                removeTypingIndicator();
+                addMessage('Sorry, I encountered an error. Please try again.');
+            }
+
+            isProcessing = false;
+        }
+
+        chatForm.addEventListener('submit', handleSubmit);
+
+        // Handle Enter key (Shift+Enter for new line)
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // Initialize with welcome message
+        startNewChat();
+    </script>
+</body>
+</html> 
